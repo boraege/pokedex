@@ -3,13 +3,14 @@ const API_KEY = '4d21e1c5-e6f4-40f2-8add-5256da04af82';
 
 // Uygulama durumu
 const state = {
-    allPokemon: [], // Tüm Pokémon listesi
-    pokemonCardsMap: new Map(), // pokemonName -> cards[]
-    ownedCards: new Map(), // cardId -> card
+    allPokemon: [],
+    pokemonCardsMap: new Map(),
+    ownedCards: new Map(),
     currentPage: 1,
     itemsPerPage: 9,
     selectedPokemon: null,
-    viewMode: 'pokemon'
+    viewMode: 'pokemon',
+    isLoading: false
 };
 
 // LocalStorage'dan veri yükleme
@@ -20,8 +21,6 @@ function loadFromStorage() {
             const data = JSON.parse(saved);
             if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0]) && data[0].length === 2) {
                 state.ownedCards = new Map(data);
-            } else {
-                state.ownedCards = new Map();
             }
         } catch (e) {
             console.error('LocalStorage yükleme hatası:', e);
@@ -30,28 +29,121 @@ function loadFromStorage() {
     }
 }
 
+// Cache'den kart verilerini yükle
+function loadCardsFromCache() {
+    const cached = localStorage.getItem('ornipokedex_cards_cache');
+    const cacheTime = localStorage.getItem('ornipokedex_cache_time');
+    
+    if (cached && cacheTime) {
+        const hoursSinceCache = (Date.now() - parseInt(cacheTime)) / (1000 * 60 * 60);
+        // Cache 24 saatten eskiyse kullanma
+        if (hoursSinceCache < 24) {
+            try {
+                const data = JSON.parse(cached);
+                return data;
+            } catch (e) {
+                console.error('Cache yükleme hatası:', e);
+            }
+        }
+    }
+    return null;
+}
+
+// Kartları cache'e kaydet
+function saveCardsToCache(cards) {
+    try {
+        localStorage.setItem('ornipokedex_cards_cache', JSON.stringify(cards));
+        localStorage.setItem('ornipokedex_cache_time', Date.now().toString());
+    } catch (e) {
+        console.error('Cache kaydetme hatası:', e);
+    }
+}
+
 // LocalStorage'a kaydetme
 function saveToStorage() {
     localStorage.setItem('ornipokedex', JSON.stringify([...state.ownedCards]));
 }
 
-// Tüm kartları ve Pokémon listesini yükle
-async function loadAllData() {
+// Kartları yükle (önce cache'den, sonra API'den)
+async function loadAllCards() {
     const loading = document.getElementById('loading');
-    loading.style.display = 'block';
-    loading.textContent = 'Kartlar yükleniyor...';
+    
+    // Önce cache'den dene
+    const cachedCards = loadCardsFromCache();
+    if (cachedCards) {
+        loading.textContent = 'Cache\'den yükleniyor...';
+        processCards(cachedCards);
+        await loadPokemonInfo();
+        displayPokemonList();
+        updateStats();
+        loading.style.display = 'none';
+        
+        // Arka planda güncel verileri yükle
+        loadCardsFromAPI(true);
+        return;
+    }
+    
+    // Cache yoksa API'den yükle
+    await loadCardsFromAPI(false);
+}
+
+// API'den kartları yükle
+async function loadCardsFromAPI(background = false) {
+    const loading = document.getElementById('loading');
+    
+    if (!background) {
+        loading.style.display = 'block';
+        loading.textContent = 'Kartlar yükleniyor...';
+    }
     
     try {
-        // Tüm kartları yükle (birden fazla sayfa)
         const allCards = [];
-        for (let page = 1; page <= 5; page++) {
-            loading.textContent = `Kartlar yükleniyor... (${page}/5)`;
+        
+        // İlk sayfayı hızlıca yükle
+        const firstResponse = await fetch(
+            `https://api.pokemontcg.io/v2/cards?pageSize=250&page=1`,
+            { headers: { 'X-Api-Key': API_KEY } }
+        );
+        
+        if (!firstResponse.ok) throw new Error(`API hatası: ${firstResponse.status}`);
+        const firstData = await firstResponse.json();
+        
+        const firstCards = firstData.data.map(card => ({
+            id: card.id,
+            name: card.name,
+            pokemonName: card.name.split(' ')[0].toLowerCase(),
+            image: card.images.large,
+            smallImage: card.images.small,
+            set: card.set.name,
+            number: card.number,
+            rarity: card.rarity || 'Common',
+            price: card.cardmarket?.prices?.averageSellPrice || card.tcgplayer?.prices?.normal?.market || 0
+        }));
+        
+        allCards.push(...firstCards);
+        
+        if (!background) {
+            // İlk kartları hemen göster
+            processCards(allCards);
+            await loadPokemonInfo();
+            displayPokemonList();
+            updateStats();
+            loading.textContent = 'Daha fazla kart yükleniyor...';
+        }
+        
+        // Geri kalan sayfaları yükle
+        const remainingPages = [2, 3, 4, 5];
+        for (const page of remainingPages) {
+            if (!background) {
+                loading.textContent = `Kartlar yükleniyor... (${page}/5)`;
+            }
+            
             const response = await fetch(
                 `https://api.pokemontcg.io/v2/cards?pageSize=250&page=${page}`,
                 { headers: { 'X-Api-Key': API_KEY } }
             );
             
-            if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+            if (!response.ok) continue;
             const data = await response.json();
             
             const cards = data.data.map(card => ({
@@ -69,22 +161,50 @@ async function loadAllData() {
             allCards.push(...cards);
         }
         
-        // Kartları Pokémon'lara göre grupla
-        allCards.forEach(card => {
-            const pokemonName = card.pokemonName;
-            if (!state.pokemonCardsMap.has(pokemonName)) {
-                state.pokemonCardsMap.set(pokemonName, []);
-            }
-            state.pokemonCardsMap.get(pokemonName).push(card);
-        });
+        // Tüm kartları işle ve cache'e kaydet
+        processCards(allCards);
+        saveCardsToCache(allCards);
         
-        // Pokémon listesini oluştur (kartı olan Pokémon'lar)
-        const pokemonNames = [...state.pokemonCardsMap.keys()].sort();
+        if (!background) {
+            await loadPokemonInfo();
+            displayPokemonList();
+            updateStats();
+            loading.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Kart yükleme hatası:', error);
+        if (!background) {
+            loading.textContent = 'Yükleme hatası! Lütfen sayfayı yenileyin.';
+            loading.style.color = '#f44336';
+        }
+    }
+}
+
+// Kartları işle ve grupla
+function processCards(cards) {
+    state.pokemonCardsMap.clear();
+    
+    cards.forEach(card => {
+        const pokemonName = card.pokemonName;
+        if (!state.pokemonCardsMap.has(pokemonName)) {
+            state.pokemonCardsMap.set(pokemonName, []);
+        }
+        state.pokemonCardsMap.get(pokemonName).push(card);
+    });
+}
+
+// Pokémon bilgilerini yükle
+async function loadPokemonInfo() {
+    const pokemonNames = [...state.pokemonCardsMap.keys()].sort();
+    
+    // Batch olarak yükle (her seferinde 50 Pokémon)
+    const batchSize = 50;
+    const allPokemon = [];
+    
+    for (let i = 0; i < pokemonNames.length; i += batchSize) {
+        const batch = pokemonNames.slice(i, i + batchSize);
         
-        loading.textContent = 'Pokémon bilgileri yükleniyor...';
-        
-        // Her Pokémon için PokeAPI'den bilgi al
-        const pokemonPromises = pokemonNames.map(async (name) => {
+        const pokemonPromises = batch.map(async (name) => {
             try {
                 const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`);
                 if (!response.ok) return null;
@@ -102,19 +222,11 @@ async function loadAllData() {
             }
         });
         
-        const pokemonResults = await Promise.all(pokemonPromises);
-        state.allPokemon = pokemonResults
-            .filter(p => p !== null)
-            .sort((a, b) => a.id - b.id);
-        
-        displayPokemonList();
-        updateStats();
-        loading.style.display = 'none';
-    } catch (error) {
-        console.error('Veri yükleme hatası:', error);
-        loading.textContent = 'Yükleme hatası! Lütfen sayfayı yenileyin.';
-        loading.style.color = '#f44336';
+        const results = await Promise.all(pokemonPromises);
+        allPokemon.push(...results.filter(p => p !== null));
     }
+    
+    state.allPokemon = allPokemon.sort((a, b) => a.id - b.id);
 }
 
 // Pokémon listesini göster
@@ -129,7 +241,6 @@ function displayPokemonList() {
         const pokemonElement = document.createElement('div');
         pokemonElement.className = 'pokemon-card';
         
-        // Bu Pokémon'un kaç kartına sahip olunduğunu hesapla
         const pokemonCards = state.pokemonCardsMap.get(pokemon.name) || [];
         const ownedCount = pokemonCards.filter(card => state.ownedCards.has(card.id)).length;
         
@@ -146,7 +257,7 @@ function displayPokemonList() {
     });
 }
 
-// Pokémon seçildiğinde kartlarını göster (ANINDA)
+// Pokémon seçildiğinde kartlarını göster
 function selectPokemon(pokemon) {
     state.selectedPokemon = pokemon;
     state.viewMode = 'cards';
@@ -328,4 +439,4 @@ document.getElementById('nextPage').addEventListener('click', () => {
 
 // Uygulama başlatma
 loadFromStorage();
-loadAllData();
+loadAllCards();
