@@ -11,8 +11,8 @@
         <header>
             <div class="header-content">
                 <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/417.png" alt="Pachirisu" class="mascot">
-                <h1>🌟 Ornipokedex 🌟</h1>
-                <p class="subtitle">Pachirisu ile Pokémon Kart Koleksiyonunu Takip Et!</p>
+                <h1>🌟 Ornipokedex TCG 🌟</h1>
+                <p class="subtitle">Gerçek Pokémon Kartlarını Takip Et!</p>
             </div>
         </header>
 
@@ -23,17 +23,12 @@
 
         <div id="collection" class="tab-content active">
             <div class="search-section">
-                <input type="text" id="searchInput" placeholder="Pokémon ara...">
-                <select id="generationFilter">
-                    <option value="all">Tüm Nesiller</option>
-                    <option value="1">Nesil 1 (1-151)</option>
-                    <option value="2">Nesil 2 (152-251)</option>
-                    <option value="3">Nesil 3 (252-386)</option>
-                    <option value="4">Nesil 4 (387-493)</option>
-                    <option value="5">Nesil 5 (494-649)</option>
-                    <option value="6">Nesil 6 (650-721)</option>
-                    <option value="7">Nesil 7 (722-809)</option>
-                    <option value="8">Nesil 8 (810-905)</option>
+                <input type="text" id="searchInput" placeholder="Kart ara (isim, set, numara)...">
+                <select id="setFilter">
+                    <option value="all">Tüm Setler</option>
+                </select>
+                <select id="rarityFilter">
+                    <option value="all">Tüm Nadirlikler</option>
                 </select>
                 <button id="showAllBtn">Tümünü Göster</button>
             </div>
@@ -41,11 +36,11 @@
             <div class="stats">
                 <div class="stat-card">
                     <span class="stat-number" id="totalOwned">0</span>
-                    <span class="stat-label">Sahip Olunan</span>
+                    <span class="stat-label">Sahip Olunan Kart</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-number" id="totalMissing">0</span>
-                    <span class="stat-label">Eksik</span>
+                    <span class="stat-number" id="totalValue">$0.00</span>
+                    <span class="stat-label">Koleksiyon Değeri</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-number" id="completionRate">0%</span>
