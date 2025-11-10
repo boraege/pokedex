@@ -16,8 +16,22 @@ const state = {
 function loadFromStorage() {
     const saved = localStorage.getItem('ornipokedex');
     if (saved) {
-        const data = JSON.parse(saved);
-        state.ownedCards = new Map(data);
+        try {
+            const data = JSON.parse(saved);
+            // Eski format kontrolü (array of IDs)
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] !== 'object') {
+                // Eski format, temizle
+                state.ownedCards = new Map();
+                localStorage.removeItem('ornipokedex');
+            } else {
+                // Yeni format (Map entries)
+                state.ownedCards = new Map(data);
+            }
+        } catch (e) {
+            console.error('LocalStorage yükleme hatası:', e);
+            state.ownedCards = new Map();
+            localStorage.removeItem('ornipokedex');
+        }
     }
 }
 
