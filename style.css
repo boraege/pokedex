@@ -201,7 +201,8 @@ h1 {
 }
 
 .pokemon-card .card-number,
-.pokemon-card .pokedex-number {
+.pokemon-card .pokedex-number,
+.pokemon-card .card-count {
     color: #999;
     font-size: 0.8em;
     margin: 2px 0;
