@@ -42,7 +42,6 @@ function loadFromStorage() {
         }
     }
 }
-}
 
 // LocalStorage'a kaydetme
 function saveToStorage() {
