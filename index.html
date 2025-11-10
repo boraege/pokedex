@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ornipokedex - Pachirisu Pokédex Takip</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/417.png" alt="Pachirisu" class="mascot">
+                <h1>🌟 Ornipokedex 🌟</h1>
+                <p class="subtitle">Pachirisu ile Pokémon Kart Koleksiyonunu Takip Et!</p>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="collection">📋 Koleksiyon</button>
+            <button class="tab-btn" data-tab="binder">📖 Binder</button>
+        </nav>
+
+        <div id="collection" class="tab-content active">
+            <div class="search-section">
+                <input type="text" id="searchInput" placeholder="Pokémon ara...">
+                <select id="generationFilter">
+                    <option value="all">Tüm Nesiller</option>
+                    <option value="1">Nesil 1 (1-151)</option>
+                    <option value="2">Nesil 2 (152-251)</option>
+                    <option value="3">Nesil 3 (252-386)</option>
+                    <option value="4">Nesil 4 (387-493)</option>
+                    <option value="5">Nesil 5 (494-649)</option>
+                    <option value="6">Nesil 6 (650-721)</option>
+                    <option value="7">Nesil 7 (722-809)</option>
+                    <option value="8">Nesil 8 (810-905)</option>
+                </select>
+                <button id="showAllBtn">Tümünü Göster</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="stat-number" id="totalOwned">0</span>
+                    <span class="stat-label">Sahip Olunan</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="totalMissing">0</span>
+                    <span class="stat-label">Eksik</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number" id="completionRate">0%</span>
+                    <span class="stat-label">Tamamlanma</span>
+                </div>
+            </div>
+
+            <div id="pokemonList" class="pokemon-grid"></div>
+            <div id="loading" class="loading">Yükleniyor...</div>
+        </div>
+
+        <div id="binder" class="tab-content">
+            <div class="binder-controls">
+                <button id="prevPage" disabled>◀ Önceki</button>
+                <span id="pageInfo">Sayfa 1</span>
+                <button id="nextPage">Sonraki ▶</button>
+            </div>
+            <div class="binder-page">
+                <div id="binderGrid" class="binder-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
