@@ -18,14 +18,22 @@ function loadFromStorage() {
     if (saved) {
         try {
             const data = JSON.parse(saved);
-            // Eski format kontrolü (array of IDs)
-            if (Array.isArray(data) && data.length > 0 && typeof data[0] !== 'object') {
+            // Eski format kontrolü (array of numbers/IDs)
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
                 // Eski format, temizle
+                console.log('Eski veri formatı temizleniyor...');
                 state.ownedCards = new Map();
                 localStorage.removeItem('ornipokedex');
-            } else {
+            } 
+            // Yeni format kontrolü (array of arrays [[key, value], ...])
+            else if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0]) && data[0].length === 2) {
                 // Yeni format (Map entries)
                 state.ownedCards = new Map(data);
+            } else {
+                // Bilinmeyen format, temizle
+                console.log('Bilinmeyen veri formatı, temizleniyor...');
+                state.ownedCards = new Map();
+                localStorage.removeItem('ornipokedex');
             }
         } catch (e) {
             console.error('LocalStorage yükleme hatası:', e);
@@ -33,6 +41,7 @@ function loadFromStorage() {
             localStorage.removeItem('ornipokedex');
         }
     }
+}
 }
 
 // LocalStorage'a kaydetme
